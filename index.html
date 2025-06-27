@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day Trading Journal - NSE</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+.container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+.header { text-align: center; margin-bottom: 20px; }
+.header h1 { margin: 0; color: #333; }
+.header p { color: #555; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.controls input, .controls select, .controls button { padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+.controls button { background: #007bff; color: white; border: none; cursor: pointer; }
+.controls button:hover { background: #0056b3; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 14px; }
+th { background: #007bff; color: white; }
+.summary-cards { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+.card { background: #f1f3f5; padding: 10px 20px; border-radius: 6px; text-align: center; flex: 1 1 150px; }
+.card h3 { margin: 0; font-size: 14px; color: #555; }
+.card .value { font-size: 18px; font-weight: bold; margin-top: 5px; }
+.profit { color: green; }
+.loss { color: red; }
+.neutral { color: #555; }
+.delete-btn { background: red; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.delete-btn:hover { background: darkred; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>📈 Day Trading Journal - NSE</h1>
+<p>Track your trades, filter by month/date, and view automated summaries</p>
+</div>
+<div class="controls">
+<input type="date" id="tradeDate">
+<input type="text" id="symbol" placeholder="Symbol">
+<select id="tradeType"><option>BUY</option><option>SELL</option></select>
+<input type="number" id="quantity" placeholder="Quantity">
+<input type="number" id="entryPrice" placeholder="Entry Price">
+<input type="number" id="exitPrice" placeholder="Exit Price">
+<input type="number" id="brokerage" placeholder="Brokerage" value="20">
+<button onclick="addTrade()">Add Trade</button>
+</div>
+<table id="tradesTable">
+<thead><tr><th>Date</th><th>Symbol</th><th>Type</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Gross P&L</th><th>Brokerage</th><th>Net P&L</th><th>Return %</th><th>Action</th></tr></thead>
+<tbody id="tradesBody"></tbody>
+</table>
+<div class="controls">
+<input type="date" id="reportDate">
+<input type="month" id="reportMonth">
+<button onclick="showReport()">Show Report</button>
+<button onclick="exportReport()">Export Report</button>
+</div>
+<table id="reportTable">
+<thead><tr><th>Date</th><th>Symbol</th><th>Type</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Gross P&L</th><th>Brokerage</th><th>Net P&L</th><th>Return %</th></tr></thead>
+<tbody></tbody>
+</table>
+<div class="summary-cards" id="summarySection" style="display:none;">
+<div class="card"><h3>Total Trades</h3><p class="value" id="totalTrades">0</p></div>
+<div class="card"><h3>Total Net P&L</h3><p class="value" id="totalPL">₹0.00</p></div>
+<div class="card"><h3>Win Ratio</h3><p class="value" id="winRatio">0%</p></div>
+</div>
+</div>
+<script>
+let trades = [], idCounter = 1;
+function addTrade() {
+const trade = { id: idCounter++, date: document.getElementById('tradeDate').value, symbol: document.getElementById('symbol').value.toUpperCase(), type: document.getElementById('tradeType').value, qty: +document.getElementById('quantity').value, entryPrice: +document.getElementById('entryPrice').value, exitPrice: +document.getElementById('exitPrice').value, brokerage: +document.getElementById('brokerage').value };
+if (!trade.date || !trade.symbol || !trade.qty || !trade.entryPrice || !trade.exitPrice) { alert('Fill all fields'); return; }
+trades.push(trade);
+renderTrades();
+}
+function calculatePL(trade) {
+const gross = trade.type === 'BUY' ? (trade.exitPrice - trade.entryPrice) * trade.qty : (trade.entryPrice - trade.exitPrice) * trade.qty;
+const net = gross - trade.brokerage;
+const ret = (net / (trade.entryPrice * trade.qty)) * 100;
+return { gross, net, ret };
+}
+function renderTrades() {
+const tbody = document.getElementById('tradesBody'); tbody.innerHTML = '';
+trades.forEach(trade => {
+const { gross, net, ret } = calculatePL(trade);
+tbody.innerHTML += `<tr><td>${trade.date}</td><td>${trade.symbol}</td><td>${trade.type}</td><td>${trade.qty}</td><td>${trade.entryPrice}</td><td>${trade.exitPrice}</td><td>${gross.toFixed(2)}</td><td>${trade.brokerage}</td><td>${net.toFixed(2)}</td><td>${ret.toFixed(2)}%</td><td><button class='delete-btn' onclick='deleteTrade(${trade.id})'>Delete</button></td></tr>`;
+});
+}
+function deleteTrade(id) { trades = trades.filter(t => t.id !== id); renderTrades(); }
+function showReport() {
+const date = document.getElementById('reportDate').value;
+const month = document.getElementById('reportMonth').value;
+let filtered = trades;
+if (date) filtered = trades.filter(t => t.date === date);
+else if (month) filtered = trades.filter(t => t.date.startsWith(month));
+const tbody = document.querySelector('#reportTable tbody'); tbody.innerHTML = '';
+filtered.forEach(trade => {
+const { gross, net, ret } = calculatePL(trade);
+tbody.innerHTML += `<tr><td>${trade.date}</td><td>${trade.symbol}</td><td>${trade.type}</td><td>${trade.qty}</td><td>${trade.entryPrice}</td><td>${trade.exitPrice}</td><td>${gross.toFixed(2)}</td><td>${trade.brokerage}</td><td>${net.toFixed(2)}</td><td>${ret.toFixed(2)}%</td></tr>`;
+});
+showSummary(filtered);
+}
+function showSummary(data) {
+if (!data.length) { document.getElementById('summarySection').style.display = 'none'; return; }
+document.getElementById('summarySection').style.display = 'flex';
+document.getElementById('totalTrades').textContent = data.length;
+const totalPL = data.reduce((s, t) => s + calculatePL(t).net, 0);
+document.getElementById('totalPL').textContent = `₹${totalPL.toFixed(2)}`;
+const win = data.filter(t => calculatePL(t).net > 0).length;
+document.getElementById('winRatio').textContent = `${((win / data.length) * 100).toFixed(2)}%`;
+}
+function exportReport() {
+const rows = [['Date','Symbol','Type','Qty','Entry','Exit','Gross P&L','Brokerage','Net P&L','Return %']];
+document.querySelectorAll('#reportTable tbody tr').forEach(row => {
+const cols = [...row.querySelectorAll('td')].map(td => td.textContent);
+rows.push(cols);
+});
+const csv = rows.map(r => r.join(',')).join('\n');
+const blob = new Blob([csv], { type: 'text/csv' });
+const a = document.createElement('a');
+a.href = URL.createObjectURL(blob);
+a.download = 'trading_report.csv';
+a.click();
+URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
